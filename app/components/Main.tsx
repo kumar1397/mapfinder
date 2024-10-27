@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -14,28 +14,42 @@ interface Pin {
 
 const MapComponent: React.FC = () => {
     const [map, setMap] = useState<maplibregl.Map | null>(null);
-    const [pins, setPins] = useState<Pin[]>(() => JSON.parse(localStorage.getItem('pins') || '[]'));
+    const [pins, setPins] = useState<Pin[]>([]);
     const [newPin, setNewPin] = useState<Partial<Pin> | null>(null);
+    const [isClient, setIsClient] = useState(false); // Track client rendering
 
-    
+    // Set isClient to true after first render
     useEffect(() => {
-        const mapInstance = new maplibregl.Map({
-            container: 'map',
-            style: 'https://demotiles.maplibre.org/style.json',
-            center: [0, 0],
-            zoom: 2,
-        });
-
-        mapInstance.on('click', (e) => {
-            setNewPin({ lat: e.lngLat.lat, lng: e.lngLat.lng, remarks: '', address: '' });
-        });
-
-        setMap(mapInstance);
-
-        return () => mapInstance.remove();
+        setIsClient(true);
     }, []);
 
-    
+    // Load pins from localStorage after component mounts on client-side only
+    useEffect(() => {
+        if (isClient) {
+            const storedPins = JSON.parse(localStorage.getItem('pins') || '[]');
+            setPins(storedPins);
+        }
+    }, [isClient]);
+
+    useEffect(() => {
+        if (isClient) {
+            const mapInstance = new maplibregl.Map({
+                container: 'map',
+                style: 'https://demotiles.maplibre.org/style.json',
+                center: [0, 0],
+                zoom: 2,
+            });
+
+            mapInstance.on('click', (e) => {
+                setNewPin({ lat: e.lngLat.lat, lng: e.lngLat.lng, remarks: '', address: '' });
+            });
+
+            setMap(mapInstance);
+
+            return () => mapInstance.remove();
+        }
+    }, [isClient]);
+
     const fetchAddress = async (lat: number, lng: number): Promise<string> => {
         try {
             const response = await axios.get(
@@ -47,7 +61,6 @@ const MapComponent: React.FC = () => {
         }
     };
 
-    
     const savePin = async () => {
         if (newPin && newPin.lat && newPin.lng) {
             const address = await fetchAddress(newPin.lat, newPin.lng);
@@ -61,21 +74,23 @@ const MapComponent: React.FC = () => {
 
             const updatedPins = [...pins, updatedPin];
             setPins(updatedPins);
-            localStorage.setItem('pins', JSON.stringify(updatedPins));
+
+            if (isClient) {
+                localStorage.setItem('pins', JSON.stringify(updatedPins));
+            }
             setNewPin(null);
         }
     };
 
-    
     const navigateToPin = (pin: Pin) => {
         if (map) {
             map.flyTo({ center: [pin.lng, pin.lat], zoom: 10 });
         }
     };
 
-    
+    // Render markers for each pin, ensuring map is fully initialized and isClient is true
     useEffect(() => {
-        if (map) {
+        if (map && isClient) {
             pins.forEach((pin) => {
                 new maplibregl.Marker()
                     .setLngLat([pin.lng, pin.lat])
@@ -88,7 +103,10 @@ const MapComponent: React.FC = () => {
                     .addTo(map);
             });
         }
-    }, [map, pins]);
+    }, [map, pins, isClient]);
+
+    // Only render the component content if in client environment to avoid SSR mismatches
+    if (!isClient) return null;
 
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
