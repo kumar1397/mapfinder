@@ -17,7 +17,7 @@ const MapComponent: React.FC = () => {
     const [pins, setPins] = useState<Pin[]>(() => JSON.parse(localStorage.getItem('pins') || '[]'));
     const [newPin, setNewPin] = useState<Partial<Pin> | null>(null);
 
-    // Initialize MapLibre Map
+    
     useEffect(() => {
         const mapInstance = new maplibregl.Map({
             container: 'map',
@@ -35,7 +35,7 @@ const MapComponent: React.FC = () => {
         return () => mapInstance.remove();
     }, []);
 
-    // Fetch address from Nominatim API
+    
     const fetchAddress = async (lat: number, lng: number): Promise<string> => {
         try {
             const response = await axios.get(
@@ -47,7 +47,7 @@ const MapComponent: React.FC = () => {
         }
     };
 
-    // Save pin to state and local storage
+    
     const savePin = async () => {
         if (newPin && newPin.lat && newPin.lng) {
             const address = await fetchAddress(newPin.lat, newPin.lng);
@@ -66,14 +66,14 @@ const MapComponent: React.FC = () => {
         }
     };
 
-    // Center map on pin when clicked in sidebar
+    
     const navigateToPin = (pin: Pin) => {
         if (map) {
             map.flyTo({ center: [pin.lng, pin.lat], zoom: 10 });
         }
     };
 
-    // Add markers on the map for saved pins
+    
     useEffect(() => {
         if (map) {
             pins.forEach((pin) => {
